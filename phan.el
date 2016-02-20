@@ -39,6 +39,16 @@ computer to clone the phan repository and update it."
   :type '(string)
   :group 'phan)
 
+(defcustom phan-state-file nil
+  "Path to the PHAN state file.
+
+When specified, pass the path to phan option --state-file.  Phan
+will use this file as a database to store results of its
+execution and go faster next time."
+  :type '(choice (string :tag "Specify a state file path")
+                 (const :tag "Do not use state file" nil))
+  :group 'phan)
+
 (defconst phan-package-dir (file-name-directory (or load-file-name buffer-file-name))
   "The directory in which the `phan' package is installed.")
 
@@ -123,15 +133,21 @@ local phan program."
 
 ;;;###autoload
 (defun phan-run-on-directory (directory)
-  "Run phan analysis on the specified directory."
+  "Run phan analysis on the specified DIRECTORY."
   (interactive "DDirectory to scan: ")
-  (let ((directory (expand-file-name directory))
-        (program (phan-get-phan-program))
-        (default-directory (or (locate-dominating-file (expand-file-name "false-file" directory) ".phan")
-                               directory)))
-    (compile (concat phan-php-command " "
-                     (shell-quote-argument (phan-get-phan-program))
-                     " --directory " (shell-quote-argument directory)))))
+  (let* ((directory (expand-file-name directory))
+         (program (phan-get-phan-program))
+         (default-directory (or (locate-dominating-file (expand-file-name "false-file" directory) ".phan")
+                                directory))
+         (command-args (list " --directory " (shell-quote-argument directory))))
+    (when (stringp phan-state-file)
+      (setq command-args (append command-args
+                                 (list " --state-file " (shell-quote-argument phan-state-file)))))
+
+    (compile (apply 'concat
+                    phan-php-command " "
+                    (shell-quote-argument (phan-get-phan-program))
+                    command-args))))
 
 (provide 'phan)
 
